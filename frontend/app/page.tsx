@@ -198,8 +198,16 @@ export default function Home() {
     return null;
   }, [view, createStep, needStep, consultStep, procureStep]);
   const isAdminView = adminViews.includes(view);
+  const canAccessAdmin = Boolean(currentUser?.is_admin);
 
   function go(next: View, label: string) {
+    if (adminViews.includes(next) && !currentUser?.is_admin) {
+      setView("admin-login");
+      setTrail([{ view: "home", label: "首页" }, { view: "admin-login", label: "管理员登录" }]);
+      flash("该页面仅限管理员访问，请使用管理员账号登录");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setView(next);
     setTrail((prev) => [...prev.filter((x) => x.view !== next), { view: next, label }].slice(-5));
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -211,6 +219,13 @@ export default function Home() {
   }
 
   function jump(next: View, label: string) {
+    if (adminViews.includes(next) && !currentUser?.is_admin) {
+      setTrail([{ view: "home", label: "首页" }, { view: "admin-login", label: "管理员登录" }]);
+      setView("admin-login");
+      flash("该页面仅限管理员访问，请使用管理员账号登录");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setTrail([{ view: "home", label: "首页" }, { view: next, label }]);
     setView(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -239,8 +254,8 @@ export default function Home() {
         </div>
       </header>
 
-      <div className={view === "home" ? "product-frame home-frame" : isAdminView ? "product-frame admin-frame" : "product-frame workspace-frame"}>
-      {isAdminView && <AdminNav view={view} jump={jump}/>}
+      <div className={view === "home" ? "product-frame home-frame" : isAdminView && canAccessAdmin ? "product-frame admin-frame" : "product-frame workspace-frame"}>
+      {isAdminView && canAccessAdmin && <AdminNav view={view} jump={jump}/>}
       <section className="view-stage">
       {view !== "home" && <div className="crumbbar"><div className="shell crumbs">{trail.map((x, i) => <span key={`${x.view}-${i}`}><button onClick={() => jump(x.view, x.label)}>{x.label}</button>{i < trail.length - 1 && <b>›</b>}</span>)}</div></div>}
 
@@ -276,12 +291,13 @@ export default function Home() {
       {view === "project" && <EnterpriseProject go={go} />}
       {view === "platform" && <PlatformView go={go} />}
       {view === "admin-login" && <AdminLogin go={go} user={currentUser} openLogin={() => setAuthOpen(true)} />}
-      {view === "admin-overview" && <AdminOverview go={go} flash={flash} />}
-      {view === "admin-review" && <AdminReview flash={flash} />}
-      {view === "admin-reports" && <AdminReports flash={flash} />}
-      {view === "admin-contributors" && <AdminContributors flash={flash} />}
-      {view === "admin-audit" && <AdminAudit flash={flash} />}
-      {view === "admin-config" && <AdminConfig flash={flash} />}
+      {isAdminView && !canAccessAdmin && <AdminLogin go={go} user={currentUser} openLogin={() => setAuthOpen(true)} />}
+      {view === "admin-overview" && canAccessAdmin && <AdminOverview go={go} flash={flash} />}
+      {view === "admin-review" && canAccessAdmin && <AdminReview flash={flash} />}
+      {view === "admin-reports" && canAccessAdmin && <AdminReports flash={flash} />}
+      {view === "admin-contributors" && canAccessAdmin && <AdminContributors flash={flash} />}
+      {view === "admin-audit" && canAccessAdmin && <AdminAudit flash={flash} />}
+      {view === "admin-config" && canAccessAdmin && <AdminConfig flash={flash} />}
       </section>
       </div>
 

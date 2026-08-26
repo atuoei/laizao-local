@@ -1,0 +1,32 @@
+# 宝塔 Nginx 的“配置文件”示例。将 example.com 替换成实际已备案域名。
+# SSL 证书由宝塔申请后，使用同样的反向代理规则即可。
+
+server {
+    listen 80;
+    server_name example.com www.example.com;
+    client_max_body_size 110m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.example.com;
+    client_max_body_size 110m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

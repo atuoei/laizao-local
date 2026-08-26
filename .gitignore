@@ -1,0 +1,21 @@
+# Frontend packages and generated output
+frontend/node_modules/
+frontend/.next/
+frontend/.vinext/
+frontend/.wrangler/
+frontend/dist/
+
+# Local configuration and secrets
+/.env
+/.env.*
+!/.env.production.example
+backend/.env
+frontend/.env.local
+*.pem
+
+# Python runtime files
+backend/__pycache__/
+backend/app/__pycache__/
+*.pyc
+.DS_Store
+backend/uploads/

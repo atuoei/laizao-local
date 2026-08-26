@@ -1,0 +1,48 @@
+.idea-layout.creative {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.48fr);
+  align-items: start;
+}
+
+.idea-conversation > label,
+.idea-conversation .two > label {
+  display: grid;
+  gap: 7px;
+  color: var(--ink2);
+  font-weight: 650;
+}
+
+.idea-conversation .two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.idea-conversation input,
+.idea-conversation textarea,
+.live-brief textarea {
+  width: 100%;
+}
+
+.idea-conversation .two input {
+  min-width: 0;
+}
+
+.live-brief textarea[readonly] {
+  min-height: 360px;
+  resize: vertical;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+@media (max-width: 1040px) {
+  .idea-layout.creative {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .idea-conversation .two {
+    grid-template-columns: 1fr;
+  }
+}

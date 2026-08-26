@@ -1,0 +1,115 @@
+/*
+ * 来造前端样式铁律（最后加载）
+ * 白底、淡蓝区块、深蓝文字、克制阴影、统一内容宽度与标题层级。
+ * 绿色／红色只用于明确的成功／风险状态，不作为页面主色。
+ */
+:root{
+  --ink:#172b4d;
+  --ink2:#344563;
+  --ink3:#667085;
+  --brand:#315f9b;
+  --brandD:#274f86;
+  --brandL:#91aacb;
+  --green:#315f9b;
+  --muted:#667085;
+  --soft:#eef3fb;
+  --surface:#fff;
+  --surface2:#f4f7fb;
+  --line:#dbe4ee;
+  --line2:#c7d4e3;
+  --paper:#f7f9fc;
+  --text-primary:#172b4d;
+  --text-secondary:#526176;
+  --text-muted:#667085;
+  --text-disabled:#98a2b3;
+  --shadow:0 12px 32px rgba(49,95,155,.08);
+}
+
+html,body,.next-app,.product-frame,.view-stage,.page{background:#f7f9fc;color:#172b4d}
+.workspace-frame{display:block;max-width:none}
+.workspace-frame .crumbbar .shell,
+.workspace-frame .stepbar .shell,
+.workspace-frame .page>.shell{width:min(1080px,calc(100% - 48px));max-width:1080px;padding-left:0;padding-right:0}
+.page{padding:48px 0 80px}
+.page-head{max-width:720px;margin-bottom:30px}
+.page-head h1{font-size:clamp(32px,3.2vw,40px);line-height:1.18;letter-spacing:-.035em;margin:14px 0 0;color:#172b4d}
+.page-head .eyebrow{padding:6px 10px;background:#eef3fb;border-color:#d5e2f0;color:#315f9b;font-size:12px}
+
+/* All product workspaces use the same white-card language. */
+.idea-conversation,.live-brief,.form-card,.result-card,.flow-card,.proposal,
+.existing-match,.draft-card,.candidates,.agent-chat,.requirement,.workspace-main,
+.profile-command,.profile-panel,.admin-card,.review-card,.report-case,
+.big-choice>button,.enterprise-choice>button,.path-card,.role-card,
+.platform-grid article,.official-grid article,.discovery-tools,.wish-composer,
+.wish-grid article,.native-tool-workspace{
+  background:#fff!important;
+  border:1px solid #dbe4ee!important;
+  border-radius:18px!important;
+  box-shadow:0 8px 26px rgba(49,95,155,.055)!important;
+}
+
+/* Mentor: remove the old cream paper treatment and keep the page compact. */
+.idea-layout.creative{grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:18px;align-items:start}
+.idea-layout.creative .idea-conversation{background:#fff!important;padding:24px}
+.idea-layout.creative .mentor-line{margin:4px 0 18px}
+.idea-layout.creative .mentor-line h2{font-size:22px;color:#172b4d}
+.idea-layout.creative input,.idea-layout.creative textarea,.live-brief textarea[readonly]{border:1px solid #c7d4e3!important;background:#fff!important;color:#172b4d!important;border-radius:12px!important}
+.idea-layout.creative textarea{min-height:140px;font-size:15px}
+.live-brief.shaped{position:sticky;top:108px;background:#eef3fb!important;border-color:#d5e2f0!important;padding:22px}
+.live-brief.shaped>h3{font-size:16px;color:#315f9b;margin:0 0 12px}
+.brief-note{background:#fff!important;border:1px solid #c7d4e3!important;border-radius:14px!important;padding:16px!important;margin:0!important}
+.brief-note span{color:#667085}
+.brief-note p{font-size:14px!important;color:#344563!important;margin:6px 0!important}
+.brief-suggestion,.mentor-message,.draft-paper{background:#eef3fb!important;border:1px solid #d5e2f0!important;color:#344563!important;transform:none!important}
+.first-version,.recommended-route,.idea-transformation{background:#eef3fb!important;border-color:#d5e2f0!important;color:#172b4d!important}
+
+/* Consumer, creator and collaboration pages. */
+.profile-command{background:linear-gradient(120deg,#fff 58%,#eef3fb)!important}
+.profile-avatar,.creator-card-grid>button>span,.collab-creators>div:last-child>button>span{background:#dfe9f4!important;color:#315f78!important}
+.verified-pill,.private-tag,.profile-metrics-next .available,.status-soft,.status-green,.contributor-list em{background:#e8f0fa!important;color:#315f9b!important}
+.service-list strong,.profile-work-grid span,.archive-list em,.archive-list button{color:#315f9b!important}
+.creator-card-grid>button:hover,.collab-creators>div:last-child>button:hover,.collab-routes>button:hover{border-color:#91aacb!important;box-shadow:var(--shadow)!important}
+.creator-card-grid small,.collab-creators small,.creator-card-grid em,.collab-creators em,
+.collab-routes span,.collab-routes b,.discovery-tools em,.home-path-grid span,
+.home-path-grid b,.wish-grid article>span,.wish-grid footer button{color:#315f9b!important}
+.discovery-tools,.profile-editor,.native-tool-workspace{background:#eef3fb!important}
+.wish-composer{background:#eef3fb!important}
+.wish-composer textarea{border-color:#c7d4e3!important;background:#fff!important}
+.demo-panel.mint,.featured-work,.not-found{background:#e8f0fa!important;color:#172b4d!important;border:1px solid #d5e2f0!important}
+.demo-panel.mint .demo-note{border:1px solid #d5e2f0}
+.enterprise-cover.mint,.enterprise-cover.amber,.enterprise-cover.violet,.enterprise-cover.blue{background:#dfe9f4!important;color:#315f78!important}
+.match-work.mint{background:#eef3fb!important;border-color:#d5e2f0!important;color:#172b4d!important}
+
+/* Navigation, platform and admin areas. */
+.topbar,.crumbbar,.stepbar{background:rgba(255,255,255,.94)}
+.topbar nav button.active,.topbar nav button:hover,.workspace-rail button.on{background:#eef3fb!important;color:#315f9b!important}
+.admin-nav{background:#eef3fb!important;border-color:#d5e2f0!important}
+.admin-nav-brand>span,.admin-tabs button.on,.admin-search button{background:#315f9b!important;color:#fff!important}
+.admin-nav nav button.on{color:#315f9b!important}
+.admin-page-head>div span,.admin-card-head>button,.queue-row em,.admin-table-row button{color:#315f9b!important}
+.admin-metrics article.warn{background:#eef3fb!important}
+.usage-chart i{background:#91aacb!important}
+.admin-login-page{background:radial-gradient(circle at 50% 10%,#e8f1fb,transparent 52%),#f7f9fc!important}
+.admin-lock{background:#e8f0fa!important;color:#315f9b!important}
+.governance>div,.workspace>aside,.mentor-dashboard.making>aside{background:#eef3fb!important;color:#172b4d!important;border-color:#d5e2f0!important}
+.platform-flow{background:#eef3fb!important;border-color:#d5e2f0!important}
+footer{background:#eef3fb!important;color:#172b4d!important;border-top:1px solid #dbe4ee}
+.footer-links button,.footer-links button:hover{color:#315f9b!important}
+
+/* Forms and controls stay consistent across every workflow. */
+input,select,textarea{color:#172b4d}
+.page input,.page select,.page textarea,.admin-page input,.admin-page select,.admin-page textarea{border-color:#c7d4e3;background:#fff}
+.page input:focus,.page select:focus,.page textarea:focus,.admin-page input:focus,.admin-page select:focus,.admin-page textarea:focus{outline:2px solid rgba(49,95,155,.18);outline-offset:1px;border-color:#91aacb!important}
+.primary,.composer button,.candidate button,.enterprise-list footer button{background:#315f9b!important;border-color:#315f9b!important;color:#fff!important;box-shadow:none!important}
+.secondary,.ghost{background:#fff!important;border-color:#c7d4e3!important;color:#315f9b!important}
+
+@media(max-width:900px){
+  .workspace-frame .crumbbar .shell,.workspace-frame .stepbar .shell,.workspace-frame .page>.shell{width:min(100% - 36px,1080px)}
+  .idea-layout.creative{grid-template-columns:1fr}
+  .live-brief.shaped{position:static}
+}
+@media(max-width:600px){
+  .page{padding:34px 0 64px}
+  .page-head h1{font-size:30px}
+  .idea-layout.creative .idea-conversation,.live-brief.shaped{padding:18px}
+}

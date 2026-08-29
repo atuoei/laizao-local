@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e6efff" />
+    <title>捏捏乐 · 30 秒放空</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <p class="eyebrow">A SMALL PAUSE</p>
+        <h1>解压捏捏乐</h1>
+        <p class="intro">按住它，慢慢捏下去。松开时，让今天的紧绷一起回弹。</p>
+      </header>
+
+      <section class="play-area" aria-label="捏捏乐互动区域">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <button id="squishy" class="squishy" aria-label="按住捏捏乐">
+          <span class="shine"></span>
+          <span class="face"><i></i><i></i><b></b></span>
+          <span class="squish-label">按住我</span>
+        </button>
+        <p id="playHint" class="play-hint">鼠标按住或手指长按</p>
+      </section>
+
+      <section class="controls" aria-label="游戏控制">
+        <div class="counter"><span>今天已放松</span><strong><b id="count">0</b> 次</strong></div>
+        <button id="colorButton" class="control-button">换一个颜色</button>
+        <button id="soundButton" class="control-button" aria-pressed="false">声音：关</button>
+      </section>
+      <p id="message" class="message" role="status">从第一下开始就很好。</p>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

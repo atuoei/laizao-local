@@ -53,6 +53,7 @@ class WorkCreate(BaseModel):
     description: str = Field(default="", max_length=10_000)
     tags: list[str] = Field(default_factory=list, max_length=10)
     cover_url: str = Field(default="", max_length=2_048)
+    trial_url: str = Field(default="", max_length=2_048)
 
 
 class WorkUpdate(BaseModel):
@@ -60,6 +61,7 @@ class WorkUpdate(BaseModel):
     description: str = Field(default="", max_length=10_000)
     tags: list[str] = Field(default_factory=list, max_length=10)
     cover_url: str = Field(default="", max_length=2_048)
+    trial_url: str = Field(min_length=1, max_length=2_048)
     price_cents: int = Field(ge=0, le=10_000_000)
 
 
@@ -70,6 +72,9 @@ class WorkOut(ORMModel):
     description: str
     tags: str
     cover_url: str
+    trial_url: str
+    deployment_status: str
+    deployment_error: str
     review_status: str
     review_note: str
     created_at: datetime
@@ -121,6 +126,7 @@ class MarketplaceItem(BaseModel):
     title: str
     description: str
     cover_url: str
+    trial_url: str
     tags: list[str]
     creator_name: str
     price_cents: int
@@ -195,6 +201,9 @@ class MyWorkItem(BaseModel):
     description: str
     tags: str
     cover_url: str
+    trial_url: str
+    deployment_status: str
+    deployment_error: str
     review_status: str
     review_note: str
     price_cents: int | None
@@ -223,6 +232,13 @@ class UploadOut(BaseModel):
     original_name: str
     size_bytes: int
     source_url: str
+
+
+class StaticDeploymentOut(BaseModel):
+    work_id: str
+    status: str
+    trial_url: str
+    message: str
 
 
 class AgentSummaryIn(BaseModel):

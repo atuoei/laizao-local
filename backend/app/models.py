@@ -53,6 +53,10 @@ class Work(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     tags: Mapped[str] = mapped_column(String(500), default="")
     cover_url: Mapped[str] = mapped_column(String(2048), default="")
+    # 购买前可公开打开的演示地址；交付包/正式源文件仍由版本和权益控制。
+    trial_url: Mapped[str] = mapped_column(String(2048), default="")
+    deployment_status: Mapped[str] = mapped_column(String(24), default="not_deployed")
+    deployment_error: Mapped[str] = mapped_column(Text, default="")
     review_status: Mapped[ReviewStatus] = mapped_column(Enum(ReviewStatus), default=ReviewStatus.draft, index=True)
     reviewer_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     review_note: Mapped[str] = mapped_column(Text, default="")

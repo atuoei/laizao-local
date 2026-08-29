@@ -5,6 +5,7 @@ export type MarketplaceItem = {
   title: string;
   description: string;
   cover_url: string;
+  trial_url: string;
   tags: string[];
   creator_name: string;
   price_cents: number;
@@ -21,10 +22,11 @@ export type MyOrder = { order_id: string; title: string; amount_cents: number; c
 export type OfflinePaymentInfo = { order_id: string; amount_cents: number; creator_name: string; qr_url: string };
 export type WorkVersionHistory = { id: string; version_number: number; changelog: string; created_at: string; is_owned_version: boolean; is_latest: boolean };
 export type CreatedOrder = { id: string; status: string };
-export type MyWork = { work_id: string; title: string; description: string; tags: string; cover_url: string; review_status: string; review_note: string; price_cents: number | null; listing_status: string | null; created_at: string };
+export type MyWork = { work_id: string; title: string; description: string; tags: string; cover_url: string; trial_url: string; deployment_status: string; deployment_error: string; review_status: string; review_note: string; price_cents: number | null; listing_status: string | null; created_at: string };
 export type CreatorSale = { order_id: string; title: string; amount_cents: number; status: string; paid_at: string | null };
 export type CreatorDashboard = { total_revenue_cents: number; paid_order_count: number; pending_review_count: number; works: MyWork[]; recent_sales: CreatorSale[] };
 export type UploadedWorkPackage = { file_id: string; original_name: string; size_bytes: number; source_url: string };
+export type StaticDeployment = { work_id: string; status: string; trial_url: string; message: string };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const TOKEN_KEY = "laizao_access_token";
@@ -60,6 +62,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export function getMarketplace() { return request<MarketplaceItem[]>("/v1/marketplace"); }
 export function trackWorkViewed(workId: string, listingId: string) { return request<{ status: string }>("/v1/events/work-viewed", { method: "POST", body: JSON.stringify({ work_id: workId, listing_id: listingId, session_id: sessionId() }) }); }
+export function trackWorkTried(workId: string, listingId: string) { return request<{ status: string }>("/v1/events/work-tried", { method: "POST", body: JSON.stringify({ work_id: workId, listing_id: listingId, session_id: sessionId() }) }); }
 export function sendSmsCode(phone: string) { return request<{ message: string; debug_code?: string }>("/v1/auth/sms/send", { method: "POST", body: JSON.stringify({ phone }) }); }
 
 export async function verifySmsCode(phone: string, code: string, displayName: string) {
@@ -109,10 +112,11 @@ export async function uploadCoverImage(file: File) {
   return response.json() as Promise<UploadedWorkPackage>;
 }
 
-export function updateWork(workId: string, input: { title: string; description: string; tags: string[]; coverUrl: string; priceCents: number }) {
-  return request<MyWork>(`/v1/works/${workId}`, { method: "PATCH", body: JSON.stringify({ title: input.title, description: input.description, tags: input.tags, cover_url: input.coverUrl, price_cents: input.priceCents }) });
+export function updateWork(workId: string, input: { title: string; description: string; tags: string[]; coverUrl: string; trialUrl: string; priceCents: number }) {
+  return request<MyWork>(`/v1/works/${workId}`, { method: "PATCH", body: JSON.stringify({ title: input.title, description: input.description, tags: input.tags, cover_url: input.coverUrl, trial_url: input.trialUrl, price_cents: input.priceCents }) });
 }
 export function archiveWork(workId: string) { return request<MyWork>(`/v1/works/${workId}/archive`, { method: "POST", body: "{}" }); }
+export function deployStaticWork(workId: string) { return request<StaticDeployment>(`/v1/works/${workId}/deploy-static`, { method: "POST", body: "{}" }); }
 export function releaseWorkVersion(workId: string, sourceUrl: string, changelog: string) { return request(`/v1/works/${workId}/versions/release`, { method: "POST", body: JSON.stringify({ source_url: sourceUrl, changelog }) }); }
 
 export async function openOwnedSource(sourceUrl: string) {
@@ -124,10 +128,11 @@ export async function openOwnedSource(sourceUrl: string) {
   const link = document.createElement("a"); link.href = blobUrl; link.download = name; link.click(); URL.revokeObjectURL(blobUrl);
 }
 
-export async function publishWork(input: { title: string; description: string; tags: string[]; priceCents: number; sourceUrl: string; coverUrl: string }) {
-  const work = await request<{ id: string }>("/v1/works", { method: "POST", body: JSON.stringify({ title: input.title, description: input.description, tags: input.tags, cover_url: input.coverUrl }) });
+export async function publishWork(input: { title: string; description: string; tags: string[]; priceCents: number; sourceUrl: string; coverUrl: string; trialUrl: string; autoDeployStatic?: boolean }) {
+  const work = await request<{ id: string }>("/v1/works", { method: "POST", body: JSON.stringify({ title: input.title, description: input.description, tags: input.tags, cover_url: input.coverUrl, trial_url: input.trialUrl }) });
   const version = await request<{ id: string }>(`/v1/works/${work.id}/versions`, { method: "POST", body: JSON.stringify({ source_url: input.sourceUrl, changelog: "来造本地 MVP 发布版本" }) });
   const listing = await request<PublishedListing>("/v1/listings", { method: "POST", body: JSON.stringify({ work_id: work.id, version_id: version.id, price_cents: input.priceCents }) });
+  if (input.autoDeployStatic) await deployStaticWork(work.id);
   await request(`/v1/works/${work.id}/submit-review`, { method: "POST", body: "{}" });
   return listing;
 }

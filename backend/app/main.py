@@ -5,13 +5,16 @@ import hmac
 import json
 import time
 import uuid
-from pathlib import Path
+import shutil
+import zipfile
+from pathlib import Path, PurePosixPath
 
 import httpx
 import bcrypt
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
 
@@ -39,6 +42,7 @@ from .schemas import (
     ReviewRejectIn,
     SmsSendIn,
     SmsVerifyIn,
+    StaticDeploymentOut,
     PasswordLoginIn,
     PasswordRegisterIn,
     OfflinePaymentInfo,
@@ -72,6 +76,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# 这里只挂载经过安全检查后解压出的静态文件；原始 ZIP 仍需要作品权益才能下载。
+trial_root = Path(settings.upload_dir) / "trials"
+trial_root.mkdir(parents=True, exist_ok=True)
+app.mount("/v1/trials", StaticFiles(directory=trial_root, html=True), name="work-trials")
 
 
 @app.on_event("startup")
@@ -111,6 +120,23 @@ def create_tables() -> None:
             connection.execute(text("ALTER TABLE works ADD COLUMN reviewed_at TIMESTAMPTZ"))
         if "cover_url" not in work_columns:
             connection.execute(text("ALTER TABLE works ADD COLUMN cover_url VARCHAR(2048) NOT NULL DEFAULT ''"))
+        if "trial_url" not in work_columns:
+            connection.execute(text("ALTER TABLE works ADD COLUMN trial_url VARCHAR(2048) NOT NULL DEFAULT ''"))
+        if "deployment_status" not in work_columns:
+            connection.execute(text("ALTER TABLE works ADD COLUMN deployment_status VARCHAR(24) NOT NULL DEFAULT 'not_deployed'"))
+        if "deployment_error" not in work_columns:
+            connection.execute(text("ALTER TABLE works ADD COLUMN deployment_error TEXT NOT NULL DEFAULT ''"))
+        # 旧的网页作品可直接把原访问地址作为体验地址；ZIP 作品单独补一个站内演示。
+        connection.execute(text("""
+            UPDATE works AS work SET trial_url = version.source_url
+            FROM listings AS listing JOIN work_versions AS version ON version.id = listing.version_id
+            WHERE work.id = listing.work_id AND work.trial_url = ''
+              AND version.source_url NOT LIKE '%/v1/files/%'
+        """))
+        connection.execute(text("""
+            UPDATE works SET trial_url = '/?view=squishy-trial'
+            WHERE title = '解压捏捏乐' AND trial_url = ''
+        """))
         file_columns = {column["name"] for column in inspect(connection).get_columns("stored_files")}
         if "kind" not in file_columns:
             connection.execute(text("ALTER TABLE stored_files ADD COLUMN kind VARCHAR(30) NOT NULL DEFAULT 'work_package'"))
@@ -220,7 +246,69 @@ def stored_file_url(file_id: str) -> str:
     return f"{settings.public_api_base_url.rstrip('/')}/v1/files/{file_id}"
 
 
+STATIC_WORK_EXTENSIONS = {
+    ".html", ".htm", ".css", ".js", ".mjs", ".json", ".map", ".txt", ".webmanifest",
+    ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".ico", ".avif",
+    ".woff", ".woff2", ".ttf", ".otf", ".mp3", ".wav", ".ogg", ".mp4", ".webm",
+}
+
+
+def deploy_static_zip(work: Work, version: WorkVersion, db: Session) -> str:
+    """安全解压纯前端 ZIP，返回公开体验地址。绝不执行 ZIP 中的脚本。"""
+    file_id = version.source_url.rstrip("/").rsplit("/v1/files/", 1)[-1]
+    stored_file = db.get(StoredFile, file_id)
+    if not stored_file or stored_file.kind != "work_package":
+        raise ValueError("当前版本不是可自动部署的 ZIP 作品包")
+    source = Path(settings.upload_dir) / stored_file.storage_key
+    if not source.is_file():
+        raise ValueError("原始 ZIP 文件不存在")
+    target = trial_root / work.id / f"v{version.version_number}"
+    temporary = trial_root / work.id / f".deploying-{uuid.uuid4().hex}"
+    file_count = 0
+    unpacked_size = 0
+    try:
+        with zipfile.ZipFile(source) as archive:
+            infos = archive.infolist()
+            if len(infos) > 500:
+                raise ValueError("ZIP 文件数量不能超过 500 个")
+            for info in infos:
+                name = PurePosixPath(info.filename)
+                if name.is_absolute() or ".." in name.parts or not info.filename:
+                    raise ValueError("ZIP 包含不安全路径")
+                # Unix 软链接可能把文件写到部署目录外，静态部署一律拒绝。
+                if (info.external_attr >> 16) & 0o170000 == 0o120000:
+                    raise ValueError("ZIP 不允许包含软链接")
+                if info.is_dir():
+                    continue
+                file_count += 1
+                unpacked_size += info.file_size
+                if file_count > 500 or unpacked_size > 50 * 1024 * 1024:
+                    raise ValueError("解压后的作品不能超过 50MB 或 500 个文件")
+                if name.suffix.lower() not in STATIC_WORK_EXTENSIONS:
+                    raise ValueError(f"不支持部署文件类型：{name.suffix or name.name}")
+            if not any(PurePosixPath(info.filename).as_posix() == "index.html" for info in infos):
+                raise ValueError("纯前端 ZIP 根目录必须包含 index.html")
+            temporary.mkdir(parents=True, exist_ok=False)
+            for info in infos:
+                if info.is_dir():
+                    continue
+                destination = temporary.joinpath(*PurePosixPath(info.filename).parts)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(info) as input_file, destination.open("wb") as output_file:
+                    shutil.copyfileobj(input_file, output_file)
+        if target.exists():
+            shutil.rmtree(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary.replace(target)
+    except (zipfile.BadZipFile, OSError, ValueError) as error:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise ValueError(str(error)) from error
+    return f"{settings.public_api_base_url.rstrip('/')}/v1/trials/{work.id}/v{version.version_number}/"
+
+
 def can_access_file(stored_file: StoredFile, user: User, db: Session) -> bool:
+    if user.is_admin:
+        return True
     if stored_file.owner_id == user.id:
         return True
     return bool(
@@ -434,6 +522,7 @@ def create_work(
         description=payload.description,
         tags=",".join(tag.strip() for tag in payload.tags if tag.strip()),
         cover_url=payload.cover_url.strip(),
+        trial_url=payload.trial_url.strip(),
         review_status=ReviewStatus.draft,
     )
     db.add(work)
@@ -470,6 +559,7 @@ def update_work(
     work.description = payload.description
     work.tags = ",".join(tag.strip() for tag in payload.tags if tag.strip())
     work.cover_url = payload.cover_url.strip()
+    work.trial_url = payload.trial_url.strip()
     work.review_status = ReviewStatus.pending
     work.review_note = "作品信息已修改，等待重新审核"
     work.reviewer_id = None
@@ -482,6 +572,38 @@ def update_work(
     db.commit()
     db.refresh(work)
     return work
+
+
+@app.post("/v1/works/{work_id}/deploy-static", response_model=StaticDeploymentOut, tags=["部署"])
+def deploy_work_static(
+    work_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> StaticDeploymentOut:
+    """MVP 自动部署：只接收作品所有者的纯前端 ZIP，生成购买前体验地址。"""
+    work = get_owned_work(work_id, user, db)
+    listing = db.scalar(select(Listing).where(Listing.work_id == work.id))
+    version = db.get(WorkVersion, listing.version_id) if listing else db.scalar(
+        select(WorkVersion).where(WorkVersion.work_id == work.id).order_by(WorkVersion.version_number.desc()).limit(1)
+    )
+    if not version:
+        raise HTTPException(status_code=400, detail="请先上传作品版本")
+    work.deployment_status = "deploying"
+    work.deployment_error = ""
+    db.commit()
+    try:
+        trial_url = deploy_static_zip(work, version, db)
+    except ValueError as error:
+        work.deployment_status = "failed"
+        work.deployment_error = str(error)
+        db.commit()
+        raise HTTPException(status_code=400, detail=f"静态部署失败：{error}") from error
+    work.trial_url = trial_url
+    work.deployment_status = "ready"
+    work.deployment_error = ""
+    log_event(db, "work_deployed", user_id=user.id, work_id=work.id, listing_id=listing.id if listing else None, properties={"version_number": version.version_number, "type": "static_zip"})
+    db.commit()
+    return StaticDeploymentOut(work_id=work.id, status=work.deployment_status, trial_url=trial_url, message="静态作品已部署，可在审核前进行体验")
 
 
 @app.post("/v1/works/{work_id}/archive", response_model=WorkOut, tags=["作品"])
@@ -597,6 +719,8 @@ def submit_review(
         raise HTTPException(status_code=400, detail="请先创建作品版本")
     if not db.scalar(select(Listing.id).where(Listing.work_id == work_id)):
         raise HTTPException(status_code=400, detail="请先完成价格设置")
+    if not work.trial_url.strip():
+        raise HTTPException(status_code=400, detail="请提供购买前可访问的体验链接")
     db.execute(
         text("UPDATE works SET review_status = 'pending', review_note = '', reviewer_id = NULL, reviewed_at = NULL WHERE id = :work_id"),
         {"work_id": work.id},
@@ -627,6 +751,7 @@ def admin_reviews(
             title=work.title,
             description=work.description,
             cover_url=work.cover_url,
+            trial_url=work.trial_url,
             tags=work.tags,
             review_status=work.review_status,
             review_note=work.review_note,
@@ -736,6 +861,7 @@ def marketplace(db: Session = Depends(get_db)) -> list[MarketplaceItem]:
             title=work.title,
             description=work.description,
             cover_url=work.cover_url,
+            trial_url=work.trial_url,
             tags=[tag for tag in work.tags.split(",") if tag],
             creator_name=creator.display_name,
             price_cents=listing.price_cents,
@@ -749,6 +875,14 @@ def marketplace(db: Session = Depends(get_db)) -> list[MarketplaceItem]:
 def track_work_view(payload: WorkViewIn, db: Session = Depends(get_db)) -> dict[str, str]:
     """匿名可用的浏览事件；登录后可在后续版本补充用户关联。"""
     log_event(db, "work_viewed", work_id=payload.work_id, listing_id=payload.listing_id, properties={"session_id": payload.session_id} if payload.session_id else None)
+    db.commit()
+    return {"status": "recorded"}
+
+
+@app.post("/v1/events/work-tried", tags=["数据事件"])
+def track_work_trial(payload: WorkViewIn, db: Session = Depends(get_db)) -> dict[str, str]:
+    """记录购买前体验，用于区分“看过”与“实际试用”的转化。"""
+    log_event(db, "work_tried", work_id=payload.work_id, listing_id=payload.listing_id, properties={"session_id": payload.session_id} if payload.session_id else None)
     db.commit()
     return {"status": "recorded"}
 
@@ -968,6 +1102,9 @@ def creator_dashboard(user: User = Depends(current_user), db: Session = Depends(
             description=work.description,
             tags=work.tags,
             cover_url=work.cover_url,
+            trial_url=work.trial_url,
+            deployment_status=work.deployment_status,
+            deployment_error=work.deployment_error,
             review_status=work.review_status,
             review_note=work.review_note,
             price_cents=listing.price_cents if listing else None,
@@ -1001,6 +1138,26 @@ def creator_dashboard(user: User = Depends(current_user), db: Session = Depends(
 def my_entitlements(
     user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> list[OwnedWorkItem]:
+    # 管理员具有平台治理所需的全部作品使用权，不需要为每个作品创建购买订单。
+    if user.is_admin:
+        works = list(db.scalars(select(Work).order_by(Work.created_at.desc())))
+        result: list[OwnedWorkItem] = []
+        for work in works:
+            version = db.scalar(
+                select(WorkVersion)
+                .where(WorkVersion.work_id == work.id)
+                .order_by(WorkVersion.version_number.desc())
+                .limit(1)
+            )
+            if not version:
+                continue
+            result.append(OwnedWorkItem(
+                entitlement_id=f"admin-{work.id}", work_id=work.id, title=work.title,
+                description=work.description, source_url=version.source_url,
+                version_number=version.version_number, latest_version_number=version.version_number,
+                granted_at=work.reviewed_at or work.created_at,
+            ))
+        return result
     rows = db.execute(
         select(Entitlement, Work, WorkVersion)
         .join(Work, Entitlement.work_id == Work.id)

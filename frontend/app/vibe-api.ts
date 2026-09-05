@@ -27,6 +27,8 @@ export type CreatorSale = { order_id: string; title: string; amount_cents: numbe
 export type CreatorDashboard = { total_revenue_cents: number; paid_order_count: number; pending_review_count: number; works: MyWork[]; recent_sales: CreatorSale[] };
 export type UploadedWorkPackage = { file_id: string; original_name: string; size_bytes: number; source_url: string };
 export type StaticDeployment = { work_id: string; status: string; trial_url: string; message: string };
+export type BuildInspection = { work_id: string; accepted: boolean; project_type: string; package_manager: string | null; build_command: string | null; output_directory: string | null; message: string };
+export type BuildTask = { id: string; work_id: string; version_id: string; status: string; log_text: string; trial_url: string; created_at: string; started_at: string | null; finished_at: string | null };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const TOKEN_KEY = "laizao_access_token";
@@ -117,6 +119,8 @@ export function updateWork(workId: string, input: { title: string; description: 
 }
 export function archiveWork(workId: string) { return request<MyWork>(`/v1/works/${workId}/archive`, { method: "POST", body: "{}" }); }
 export function deployStaticWork(workId: string) { return request<StaticDeployment>(`/v1/works/${workId}/deploy-static`, { method: "POST", body: "{}" }); }
+export function inspectViteBuild(workId: string) { return request<BuildInspection>(`/v1/works/${workId}/inspect-vite-build`, { method: "POST", body: "{}" }); }
+export function queueViteBuild(workId: string) { return request<BuildTask>(`/v1/works/${workId}/build-vite`, { method: "POST", body: "{}" }); }
 export function releaseWorkVersion(workId: string, sourceUrl: string, changelog: string) { return request(`/v1/works/${workId}/versions/release`, { method: "POST", body: JSON.stringify({ source_url: sourceUrl, changelog }) }); }
 
 export async function openOwnedSource(sourceUrl: string) {

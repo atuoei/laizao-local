@@ -50,7 +50,7 @@ export function NativeToolsView({ onExplore, onMentor, onCollab, flash }: { onEx
   return <section className="page"><div className="shell">
     <div className="page-head"><span>来造原生工具</span><h1>官方工具</h1><p>所有工具均在来造页面内运行；图片、白板和 PDF 默认只在当前浏览器处理。</p></div>
     <div className="official-toolbar"><div className="scene-chips">{tags.map((x) => <button key={x} className={tag === x ? "on" : ""} onClick={() => setTag(x)}>{x}</button>)}</div><button className="secondary" onClick={onExplore}>查看创作者作品 →</button></div>
-    <div className="official-grid">{list.map((tool, i) => <article key={tool.name}><div className={`tool-mark tool-mark-${i % 4}`}>{tool.icon}</div><span>{tool.tag}</span><h3>{tool.name}</h3><p>{tool.desc}</p><footer><small>来造原生 · 站内使用</small><button onClick={() => open(tool.name)}>打开工具 →</button></footer></article>)}</div>
+    <div className="official-grid official-grid-blue">{list.map((tool, i) => <article className="tool-card" key={tool.name}><div className={`tool-mark tool-avatar tool-avatar-${i % 9}`} aria-label={tool.name}>{tool.icon}</div><span>{tool.tag}</span><h3>{tool.name}</h3><p>{tool.desc}</p><footer><small>来造原生 · 站内使用</small><button onClick={() => open(tool.name)}>打开工具 →</button></footer></article>)}</div>
     {active && <div id="native-tool-workspace" className="native-tool-workspace"><div className="native-tool-head"><div><span>正在使用</span><h2>{active}</h2></div><button className="secondary" onClick={() => setActive(null)}>关闭</button></div><ToolWorkspace name={active} flash={flash}/></div>}
     <div className="official-route"><div><b>工具无法满足当前需求？</b><span>生成可复制到自有 AI 平台的提示词，或进入定制合作。</span></div><button onClick={onMentor}>生成提示词</button><button onClick={onCollab}>定制合作</button></div>
   </div></section>;

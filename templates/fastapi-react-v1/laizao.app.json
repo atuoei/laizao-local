@@ -1,0 +1,11 @@
+{
+  "template": "fastapi-react-v1",
+  "frontend": {
+    "build": "vite",
+    "output": "dist"
+  },
+  "backend": {
+    "entry": "backend.app.main:app",
+    "health": "/health"
+  }
+}

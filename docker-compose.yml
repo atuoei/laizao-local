@@ -24,7 +24,29 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/uploads:/app/uploads
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  build-worker:
+    build: ./backend/builder
+    env_file: ./backend/.env
+    environment:
+      BUILD_API_BASE: http://api:8000
+    depends_on:
+      api:
+        condition: service_started
+    volumes:
+      - ./backend/uploads/works:/app/uploads/works:ro
+      - ./backend/uploads/trials:/app/uploads/trials
+      - build_workspace:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   postgres_data:
+  build_workspace:

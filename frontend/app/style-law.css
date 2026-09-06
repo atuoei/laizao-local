@@ -87,6 +87,7 @@ html,body,.next-app,.product-frame,.view-stage,.page{background:#f7f9fc;color:#1
 .admin-nav-brand>span,.admin-tabs button.on,.admin-search button{background:#315f9b!important;color:#fff!important}
 .admin-nav nav button.on{color:#315f9b!important}
 .admin-page-head>div span,.admin-card-head>button,.queue-row em,.admin-table-row button{color:#315f9b!important}
+.admin-card-head>button.primary{color:#fff!important}
 .admin-metrics article.warn{background:#eef3fb!important}
 .usage-chart i{background:#91aacb!important}
 .admin-login-page{background:radial-gradient(circle at 50% 10%,#e8f1fb,transparent 52%),#f7f9fc!important}

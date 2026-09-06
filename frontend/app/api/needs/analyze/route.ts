@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { dataActor, identifiedJson } from "../../data-identity";
 
 type NeedInput = {
   message?: string;
@@ -36,6 +37,7 @@ function outputText(data: ResponsesPayload) {
 async function ready() {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS need_analyses (
     id TEXT PRIMARY KEY,
+    actor_id TEXT NOT NULL,
     message TEXT NOT NULL,
     answers TEXT NOT NULL,
     supplement TEXT NOT NULL,
@@ -122,6 +124,7 @@ async function analyzeWithOpenAI(input: Required<NeedInput>): Promise<NeedAnalys
 }
 
 export async function POST(request: Request) {
+  const actor = dataActor(request);
   const body = await request.json().catch(() => null) as NeedInput | null;
   const message = body?.message?.trim() || "";
   if (!message || message.length > 1000) return Response.json({ error: "需求内容无效" }, { status: 400 });
@@ -141,7 +144,7 @@ export async function POST(request: Request) {
     source = "local";
     analysis = localAnalysis(input);
   }
-  await env.DB.prepare("INSERT INTO need_analyses (id, message, answers, supplement, analysis, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(crypto.randomUUID(), input.message, JSON.stringify(input.answers), input.supplement, JSON.stringify(analysis), source, Date.now()).run();
-  return Response.json({ analysis, source });
+  await env.DB.prepare("INSERT INTO need_analyses (id, actor_id, message, answers, supplement, analysis, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), actor.id, input.message, JSON.stringify(input.answers), input.supplement, JSON.stringify(analysis), source, Date.now()).run();
+  return identifiedJson({ analysis, source }, actor);
 }

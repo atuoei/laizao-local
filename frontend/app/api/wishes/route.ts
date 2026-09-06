@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { dataActor, identifiedJson } from "../data-identity";
 
 const defaults = [
   ["seed-1", "一键把会议录音整理成行动清单", "一键把会议录音整理成行动清单", "工作效率", 328],
@@ -14,6 +15,7 @@ async function ready() {
     title TEXT NOT NULL,
     category TEXT NOT NULL,
     votes INTEGER NOT NULL DEFAULT 1,
+    actor_id TEXT,
     created_at INTEGER NOT NULL
   )`).run();
   const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM wishes").first<{total:number}>();
@@ -56,12 +58,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const actor = dataActor(request);
   await ready();
   const body = await request.json().catch(()=>null) as {content?:string}|null;
   const content = body?.content?.trim();
   if (!content || content.length > 500) return Response.json({error:"愿望内容无效"},{status:400});
   const summary = await summarize(content);
   const wish = { id: crypto.randomUUID(), content, title: summary.title, category: summary.category, votes: 1, createdAt: Date.now() };
-  await env.DB.prepare("INSERT INTO wishes (id, content, title, category, votes, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(wish.id,wish.content,wish.title,wish.category,wish.votes,wish.createdAt).run();
-  return Response.json({ wish: {id:wish.id,title:wish.title,category:wish.category,votes:wish.votes} },{status:201});
+  await env.DB.prepare("INSERT INTO wishes (id, content, title, category, votes, actor_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(wish.id,wish.content,wish.title,wish.category,wish.votes,actor.id,wish.createdAt).run();
+  return identifiedJson({ wish: {id:wish.id,title:wish.title,category:wish.category,votes:wish.votes} },actor,{status:201});
 }

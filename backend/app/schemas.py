@@ -91,6 +91,9 @@ class VersionOut(ORMModel):
     version_number: int
     source_url: str
     changelog: str
+    review_status: str
+    review_note: str
+    published_at: datetime | None
     created_at: datetime
 
 
@@ -141,7 +144,10 @@ class OrderOut(ORMModel):
     id: str
     buyer_id: str
     listing_id: str
+    work_id: str
+    version_id: str
     amount_cents: int
+    currency: str
     status: str
     created_at: datetime
     paid_at: datetime | None
@@ -170,6 +176,7 @@ class EntitlementOut(ORMModel):
     work_id: str
     source_order_id: str
     version_id: str
+    status: str
     created_at: datetime
 
 
@@ -232,6 +239,7 @@ class UploadOut(BaseModel):
     original_name: str
     size_bytes: int
     source_url: str
+    sha256: str
 
 
 class StaticDeploymentOut(BaseModel):
@@ -239,6 +247,46 @@ class StaticDeploymentOut(BaseModel):
     status: str
     trial_url: str
     message: str
+
+
+class BuildInspectionOut(BaseModel):
+    """非静态前端作品在进入隔离构建器前的检查结果。"""
+    work_id: str
+    accepted: bool
+    project_type: str
+    package_manager: str | None = None
+    build_command: str | None = None
+    output_directory: str | None = None
+    message: str
+
+
+class FullStackTemplateInspectionOut(BaseModel):
+    """受控全栈模板的静态准入结果；通过后仍需管理员发起隔离部署。"""
+    work_id: str
+    accepted: bool
+    template: str | None = None
+    frontend_build_command: str | None = None
+    backend_entry: str | None = None
+    health_path: str | None = None
+    deployment_policy: str
+    message: str
+
+
+class BuildTaskOut(BaseModel):
+    id: str
+    work_id: str
+    version_id: str
+    status: str
+    log_text: str
+    trial_url: str
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+
+
+class BuildWorkerCompletionIn(BaseModel):
+    status: str = Field(pattern=r"^(succeeded|failed)$")
+    log_text: str = Field(default="", max_length=20_000)
 
 
 class AgentSummaryIn(BaseModel):
@@ -257,6 +305,8 @@ class ReviewRejectIn(BaseModel):
 
 class ReviewItem(ORMModel):
     id: str
+    version_id: str
+    version_number: int
     title: str
     description: str
     cover_url: str
@@ -275,7 +325,31 @@ class FunnelOut(BaseModel):
     order_to_paid_rate: float
 
 
+class OperationsOverviewOut(BaseModel):
+    generated_at: datetime
+    users_total: int
+    active_users_30d: int
+    approved_works: int
+    active_listings: int
+    pending_versions: int
+    paid_orders: int
+    gross_payment_cents: int
+    refund_cents: int
+    platform_net_revenue_cents: int
+    creator_payable_cents: int
+    refund_rate: float
+
+
+class DataQualityItem(BaseModel):
+    check_name: str
+    status: str
+    issue_count: int
+    message: str
+    checked_at: datetime
+
+
 class WorkViewIn(BaseModel):
     work_id: str
     listing_id: str | None = None
     session_id: str | None = Field(default=None, max_length=100)
+    event_id: str | None = Field(default=None, max_length=100)

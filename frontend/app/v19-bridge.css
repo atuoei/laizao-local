@@ -19,6 +19,9 @@
 .creator-account-actions > div, .admin-card, .review-card { border-color:var(--v19-line); box-shadow:0 8px 24px rgba(49,95,155,.05); }
 .creator-account-actions > div { border-radius:20px; }
 .avatar { border:1px solid #d5e2f0; box-shadow:0 4px 16px rgba(49,95,155,.09); }
+.system-avatar { background-image:url('/avatar-system.jpg')!important; background-size:600% 500%!important; background-position:0 0!important; background-repeat:no-repeat!important; color:transparent!important; }
+.creator-avatar { background-image:url('/avatar-system.jpg')!important; background-size:600% 500%!important; background-position:40% 25%!important; background-repeat:no-repeat!important; color:transparent!important; }
+.author .creator-avatar,.creator-line .creator-avatar { flex:none; }
 
 @media (hover:hover) and (pointer:fine) { .official-grid article.tool-card:hover { transform:translateY(-3px); border-color:#91aacb; box-shadow:0 16px 34px rgba(49,95,155,.12); } }
 @media (max-width:1000px) { .topbar-inner { grid-template-columns:minmax(170px,210px) minmax(420px,1fr) auto; }.topbar nav button { font-size:13px; } }

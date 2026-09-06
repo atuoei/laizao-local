@@ -17,6 +17,8 @@ export type AuthSession = { access_token: string; token_type: "bearer"; user: Ap
 export type PublishedListing = { id: string; work_id: string; version_id: string; price_cents: number; currency: string; status: string };
 export type ReviewWork = { id: string; title: string; description: string; tags: string; review_status: string; review_note: string; source_url: string; created_at: string };
 export type Funnel = { from_date: string; to_date: string; counts: Record<string, number>; view_to_order_rate: number; order_to_paid_rate: number };
+export type OperationsOverview = { generated_at:string; users_total:number; active_users_30d:number; approved_works:number; active_listings:number; pending_versions:number; paid_orders:number; gross_payment_cents:number; refund_cents:number; platform_net_revenue_cents:number; creator_payable_cents:number; refund_rate:number };
+export type DataQualityItem = { check_name:string; status:"passed"|"failed"; issue_count:number; message:string; checked_at:string };
 export type OwnedWork = { entitlement_id: string; work_id: string; title: string; description: string; source_url: string; version_number: number; latest_version_number: number; granted_at: string };
 export type MyOrder = { order_id: string; title: string; amount_cents: number; currency: string; status: string; created_at: string; paid_at: string | null; refunded_at: string | null };
 export type OfflinePaymentInfo = { order_id: string; amount_cents: number; creator_name: string; qr_url: string };
@@ -25,7 +27,7 @@ export type CreatedOrder = { id: string; status: string };
 export type MyWork = { work_id: string; title: string; description: string; tags: string; cover_url: string; trial_url: string; deployment_status: string; deployment_error: string; review_status: string; review_note: string; price_cents: number | null; listing_status: string | null; created_at: string };
 export type CreatorSale = { order_id: string; title: string; amount_cents: number; status: string; paid_at: string | null };
 export type CreatorDashboard = { total_revenue_cents: number; paid_order_count: number; pending_review_count: number; works: MyWork[]; recent_sales: CreatorSale[] };
-export type UploadedWorkPackage = { file_id: string; original_name: string; size_bytes: number; source_url: string };
+export type UploadedWorkPackage = { file_id: string; original_name: string; size_bytes: number; source_url: string; sha256: string };
 export type StaticDeployment = { work_id: string; status: string; trial_url: string; message: string };
 export type BuildInspection = { work_id: string; accepted: boolean; project_type: string; package_manager: string | null; build_command: string | null; output_directory: string | null; message: string };
 export type BuildTask = { id: string; work_id: string; version_id: string; status: string; log_text: string; trial_url: string; created_at: string; started_at: string | null; finished_at: string | null };
@@ -95,6 +97,9 @@ export function getPendingReviews() { return request<ReviewWork[]>("/v1/admin/re
 export function approveWork(workId: string) { return request<ReviewWork>(`/v1/admin/works/${workId}/approve`, { method: "POST", body: "{}" }); }
 export function rejectWork(workId: string, note: string) { return request<ReviewWork>(`/v1/admin/works/${workId}/reject`, { method: "POST", body: JSON.stringify({ note }) }); }
 export function getFunnel() { return request<Funnel>("/v1/admin/analytics/funnel"); }
+export function getOperationsOverview() { return request<OperationsOverview>("/v1/admin/operations/overview"); }
+export function getLatestDataQuality() { return request<DataQualityItem[]>("/v1/admin/operations/quality/latest"); }
+export function runDataQualityChecks() { return request<DataQualityItem[]>("/v1/admin/operations/quality/run", { method:"POST", body:"{}" }); }
 
 export async function uploadWorkPackage(file: File) {
   if (!file.name.toLowerCase().endsWith(".zip")) throw new Error("请选择 .zip 格式的作品包");
@@ -141,7 +146,10 @@ export async function publishWork(input: { title: string; description: string; t
   return listing;
 }
 
-export function createOrder(listingId: string) { return request<CreatedOrder>("/v1/orders", { method: "POST", body: JSON.stringify({ listing_id: listingId }) }); }
+export function createOrder(listingId: string) {
+  const key = `order:${listingId}:${crypto.randomUUID()}`;
+  return request<CreatedOrder>("/v1/orders", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify({ listing_id: listingId }) });
+}
 export function simulatePaymentSuccess(orderId: string) { return request(`/v1/orders/${orderId}/simulate-paid`, { method: "POST", body: "{}" }); }
 export function simulatePaymentFailed(orderId: string) { return request(`/v1/orders/${orderId}/simulate-payment-failed`, { method: "POST", body: "{}" }); }
 export function simulateRefund(orderId: string) { return request(`/v1/orders/${orderId}/simulate-refund`, { method: "POST", body: "{}" }); }

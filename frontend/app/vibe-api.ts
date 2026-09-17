@@ -141,7 +141,20 @@ export async function publishWork(input: { title: string; description: string; t
   const work = await request<{ id: string }>("/v1/works", { method: "POST", body: JSON.stringify({ title: input.title, description: input.description, tags: input.tags, cover_url: input.coverUrl, trial_url: input.trialUrl }) });
   const version = await request<{ id: string }>(`/v1/works/${work.id}/versions`, { method: "POST", body: JSON.stringify({ source_url: input.sourceUrl, changelog: "来造本地 MVP 发布版本" }) });
   const listing = await request<PublishedListing>("/v1/listings", { method: "POST", body: JSON.stringify({ work_id: work.id, version_id: version.id, price_cents: input.priceCents }) });
-  if (input.autoDeployStatic) await deployStaticWork(work.id);
+  if (input.autoDeployStatic) {
+    // 用户只需要上传 ZIP：先尝试直接发布静态成品；根目录没有 index.html
+    // 时，再自动识别受支持的 Vite 源码并送入受限构建 Worker。
+    try {
+      await deployStaticWork(work.id);
+    } catch (staticError) {
+      const inspection = await inspectViteBuild(work.id);
+      if (!inspection.accepted) {
+        const original = staticError instanceof Error ? staticError.message : "静态部署失败";
+        throw new Error(`${original}；${inspection.message}`);
+      }
+      await queueViteBuild(work.id);
+    }
+  }
   await request(`/v1/works/${work.id}/submit-review`, { method: "POST", body: "{}" });
   return listing;
 }

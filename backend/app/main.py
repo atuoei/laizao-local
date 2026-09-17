@@ -441,6 +441,26 @@ def public_trial_url(work: Work, version: WorkVersion) -> str:
     return f"{settings.public_api_base_url.rstrip('/')}/v1/trials/{work.id}/v{version.version_number}/"
 
 
+def static_archive_layout(infos: list[zipfile.ZipInfo]) -> tuple[list[zipfile.ZipInfo], tuple[str, ...]]:
+    """识别静态 ZIP 的入口，兼容 macOS 元数据和一层项目外包装目录。"""
+    content = []
+    for info in infos:
+        path = PurePosixPath(info.filename)
+        if not path.parts or path.parts[0] == "__MACOSX" or path.name.startswith("._") or path.name == ".DS_Store":
+            continue
+        content.append(info)
+    names = {PurePosixPath(info.filename).as_posix() for info in content}
+    if "index.html" in names:
+        return content, ()
+
+    roots = {PurePosixPath(info.filename).parts[0] for info in content}
+    if len(roots) == 1:
+        wrapper = next(iter(roots))
+        if f"{wrapper}/index.html" in names:
+            return content, (wrapper,)
+    raise ValueError("纯前端 ZIP 需要在根目录或唯一项目文件夹内包含 index.html")
+
+
 def deploy_static_zip(work: Work, version: WorkVersion, db: Session) -> str:
     """安全解压纯前端 ZIP，返回公开体验地址。绝不执行 ZIP 中的脚本。"""
     _, source = get_version_package(version, db)
@@ -450,7 +470,7 @@ def deploy_static_zip(work: Work, version: WorkVersion, db: Session) -> str:
     unpacked_size = 0
     try:
         with zipfile.ZipFile(source) as archive:
-            infos = safe_archive_files(source)
+            infos, wrapper = static_archive_layout(safe_archive_files(source))
             for info in infos:
                 name = PurePosixPath(info.filename)
                 file_count += 1
@@ -459,13 +479,14 @@ def deploy_static_zip(work: Work, version: WorkVersion, db: Session) -> str:
                     raise ValueError("解压后的作品不能超过 50MB 或 500 个文件")
                 if name.suffix.lower() not in STATIC_WORK_EXTENSIONS:
                     raise ValueError(f"不支持部署文件类型：{name.suffix or name.name}")
-            if not any(PurePosixPath(info.filename).as_posix() == "index.html" for info in infos):
-                raise ValueError("纯前端 ZIP 根目录必须包含 index.html")
             temporary.mkdir(parents=True, exist_ok=False)
             for info in infos:
                 if info.is_dir():
                     continue
-                destination = temporary.joinpath(*PurePosixPath(info.filename).parts)
+                parts = PurePosixPath(info.filename).parts[len(wrapper):]
+                if not parts:
+                    continue
+                destination = temporary.joinpath(*parts)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(info) as input_file, destination.open("wb") as output_file:
                     shutil.copyfileobj(input_file, output_file)

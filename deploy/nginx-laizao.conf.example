@@ -16,6 +16,25 @@ server {
     }
 }
 
+# 作品体验子域名。DNS 中需添加 *.apps.example.com A 记录，指向服务器；
+# 同时为 *.apps.example.com 申请 DNS 验证的通配符证书。
+# 作品地址形如：<uuid>-v1.apps.example.com
+server {
+    listen 80;
+    server_name ~^(?<trial_work_id>[0-9a-f-]{36})-v(?<trial_version>[1-9][0-9]*)\.apps\.example\.com$;
+    client_max_body_size 110m;
+
+    location / {
+        rewrite ^/(.*)$ /v1/trials/$trial_work_id/v$trial_version/$1 break;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
 server {
     listen 80;
     server_name api.example.com;

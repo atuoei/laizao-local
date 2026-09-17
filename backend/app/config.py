@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     admin_initial_password: str = ""
     upload_dir: str = "/app/uploads"
     public_api_base_url: str = "http://localhost:8001"
+    # 例如 apps.hilaizao.top。设置后，静态体验版使用
+    # <work-id>-v<version>.apps.hilaizao.top；留空则保持 /v1/trials/... 路径。
+    trial_subdomain_base: str = ""
     max_upload_bytes: int = 100 * 1024 * 1024
     max_cover_bytes: int = 5 * 1024 * 1024
     ai_provider: str = "mock"

@@ -32,6 +32,7 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      BUILD_WORKER_TOKEN: ${BUILD_WORKER_TOKEN}
     depends_on:
       db:
         condition: service_healthy
@@ -39,6 +40,31 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - uploads_data:/app/uploads
+
+  # 仅用于受限 Vite 前端 ZIP 的构建。它以非 root、只读根文件系统、
+  # 内存/进程数限制运行，构建完成后只发布 dist 静态文件。
+  build-worker:
+    build: ./backend/builder
+    restart: unless-stopped
+    environment:
+      BUILD_API_BASE: http://api:8000
+      BUILD_WORKER_TOKEN: ${BUILD_WORKER_TOKEN}
+    depends_on:
+      api:
+        condition: service_started
+    volumes:
+      - uploads_data:/app/uploads
+      - build_workspace:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
   frontend:
     build:
@@ -53,3 +79,4 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  build_workspace:

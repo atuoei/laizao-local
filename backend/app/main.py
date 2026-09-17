@@ -433,6 +433,14 @@ def inspect_full_stack_template_zip(version: WorkVersion, db: Session) -> FullSt
         )
 
 
+def public_trial_url(work: Work, version: WorkVersion) -> str:
+    """为静态作品生成公开体验地址；子域名模式不依赖数据库查找。"""
+    base = settings.trial_subdomain_base.strip().lower().strip(".")
+    if base:
+        return f"https://{work.id}-v{version.version_number}.{base}/"
+    return f"{settings.public_api_base_url.rstrip('/')}/v1/trials/{work.id}/v{version.version_number}/"
+
+
 def deploy_static_zip(work: Work, version: WorkVersion, db: Session) -> str:
     """安全解压纯前端 ZIP，返回公开体验地址。绝不执行 ZIP 中的脚本。"""
     _, source = get_version_package(version, db)
@@ -468,7 +476,7 @@ def deploy_static_zip(work: Work, version: WorkVersion, db: Session) -> str:
     except (zipfile.BadZipFile, OSError, ValueError) as error:
         shutil.rmtree(temporary, ignore_errors=True)
         raise ValueError(str(error)) from error
-    return f"{settings.public_api_base_url.rstrip('/')}/v1/trials/{work.id}/v{version.version_number}/"
+    return public_trial_url(work, version)
 
 
 def can_access_file(stored_file: StoredFile, user: User, db: Session) -> bool:
@@ -917,7 +925,7 @@ def complete_build_task(
     task.log_text = payload.log_text[-20_000:]
     task.finished_at = datetime.now(timezone.utc)
     if payload.status == "succeeded" and work and version:
-        trial_url = f"{settings.public_api_base_url.rstrip('/')}/v1/trials/{work.id}/v{version.version_number}/"
+        trial_url = public_trial_url(work, version)
         task.trial_url = trial_url
         work.trial_url = trial_url
         work.deployment_status = "ready"

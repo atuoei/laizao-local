@@ -486,6 +486,12 @@ function QuoteView({go}:{go:(v:View,l:string)=>void}) { return <Page title="提�
 
 function OrderWorkspace({go,flash}:{go:(v:View,l:string)=>void;flash:(s:string)=>void}) { const [delivered,setDelivered]=useState(false); return <Page title="订单工作台" eyebrow="IN PROGRESS · 还剩 4 天" intro="作品在外部完成后回到这里提交；范围、价格或期限变化必须形成正式变更。"><div className="workspace"><aside><b>订单进度</b>{["条款确认","预算托管","外部制作","提交验收","结算"].map((x,i)=><span key={x} className={i<3?"done":i===3?"on":""}><i>{i<3?"✓":i+1}</i>{x}</span>)}<div className="token-box"><small>本单 Token</small><b>182 / 500</b><progress value="182" max="500"/></div></aside><div className="workspace-main"><div className="tabs"><button className="on">交付版本</button><button>沟通记录</button><button>验收标准</button><button>订单变更</button></div><div className="version-card"><span>当前版本</span><h3>团队行程协作工具 · v0.9</h3><p>已完成角色权限、共同编辑与版本历史；PDF 导出等待最终检查。</p><div className="checklist"><label><input type="checkbox" defaultChecked/> 3 个角色权限</label><label><input type="checkbox" defaultChecked/> 多人协作</label><label><input type="checkbox" defaultChecked/> 版本回退</label><label><input type="checkbox"/> PDF 导出检查</label></div><button className="secondary" onClick={()=>flash("平台检查：发现 1 项验收要求尚未完成")}>对照验收标准检查</button></div>{delivered?<div className="delivered"><b>✓ 已提交需求方验收</b><p>需求方有 3 天确认或按验收条目提出修改。</p><button onClick={()=>{flash("模拟验收通过，¥1,968 已进入结算");go("creator","创作者中心");}}>模拟验收通过</button></div>:<button className="primary" onClick={()=>setDelivered(true)}>提交交付审批并送验</button>}</div></div></Page> }
 
+function localNeedAnalysis(message:string, answers:string[], supplement:string):NeedAnalysis {
+  const all=`${message} ${answers.join(" ")} ${supplement}`;
+  const capabilities=[/协作|多人/.test(all)?"多人协作":"单人使用",/权限|角色/.test(all)?"角色权限":"基础权限",/客户|分享|确认/.test(all)?"客户确认":"结果分享"];
+  return {assistantMessage:"需求已整理完成。平台正在使用基础规则匹配，后续可接入 AI 服务获得更细化的分析。",summaryTitle:message.slice(0,24)||"待定制网页工具",objective:message,userGroup:answers.find(x=>/人|团队|用户/.test(x))||"待确认",requiredCapabilities:capabilities,deadline:answers.find(x=>/周|天|月/.test(x))||"待确认",match:{name:"暂未匹配到已上架作品",type:"网页",fit:0,reason:"当前会先生成可发布的定制需求草稿。",missing:capabilities},nextAction:"custom_request"};
+}
+
 function NeedView({setStep,go,flash,onAnalyzed}:{setStep:(n:number)=>void;go:(v:View,l:string)=>void;flash:(s:string)=>void;onAnalyzed:(x:NeedAnalysis)=>void}) {
   const message="我想做一个给旅行社内部使用的行程规划工具，可以多人协作，也能发给客户确认。";
   const options=["10–20 人","需要角色权限","两周内"];
@@ -503,7 +509,13 @@ function NeedView({setStep,go,flash,onAnalyzed}:{setStep:(n:number)=>void;go:(v:
       onAnalyzed(data.analysis);
       setStep(1);
       go("need-draft","匹配已有内容");
-    }catch{flash("需求分析暂时失败，请稍后再试");}
+    }catch{
+      // 腾讯云自托管时，Cloudflare 专用接口不可用；仍允许用户完成需求整理与发布。
+      onAnalyzed(localNeedAnalysis(message,selected,supplement));
+      setStep(1);
+      flash("已使用基础规则整理需求，可继续确认草稿");
+      go("need-draft","匹配已有内容");
+    }
     finally{setAnalyzing(false);}
   }
   return <Page title="把你的问题讲给来造" eyebrow="PERSONAL NEED" intro=""><div className="agent-chat"><div className="chat-head"><Icon>来</Icon><div><b>来造客服</b><span>只协助导航和整理，不会替你发布或付款</span></div></div><div className="bubble user">{message}</div><div className="bubble bot">为了匹配现有内容，请确认使用人数、必须保留的功能和完成时间。</div><div className="quick">{options.map(x=><button key={x} className={selected.includes(x)?"selected":""} onClick={()=>toggle(x)}>{x}</button>)}</div><div className="composer"><input value={supplement} onChange={e=>setSupplement(e.target.value)} placeholder="补充你的需求…"/><button disabled={analyzing} onClick={analyze}>{analyzing?"分析中…":"继续分析 →"}</button></div></div></Page>

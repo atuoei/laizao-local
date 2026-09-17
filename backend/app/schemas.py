@@ -314,6 +314,9 @@ class ReviewItem(ORMModel):
     review_status: str
     review_note: str
     source_url: str
+    trial_url: str
+    deployment_status: str
+    deployment_error: str
     created_at: datetime
 
 

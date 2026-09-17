@@ -1131,6 +1131,8 @@ def admin_reviews(
             review_status=version.review_status,
             review_note=version.review_note,
             source_url=version.source_url,
+            deployment_status=work.deployment_status,
+            deployment_error=work.deployment_error,
             created_at=work.created_at,
         )
         for work, version in rows
